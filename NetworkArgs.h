@@ -4,6 +4,7 @@
 #include "Connection.h"
 #include "Message.h"
 #include "fileStreamUtils.h"
+#include "SocketFile.h"
 
 class NetworkArgs{
 private:
@@ -17,6 +18,7 @@ private:
     struct sockaddr_in udp_socket_addr;
     struct sockaddr_in tcp_socket_addr;
     std::vector<Connection *> * connections;
+    std::vector<SocketFile *> * socket_files;
 
     void enableAddressReuse();
     void enableBroadcastOption();
@@ -37,8 +39,10 @@ public:
     struct sockaddr_in getUDPAddr();
     struct sockaddr_in getTCPAddr();
     std::vector<Connection *> * getConnections();
+    std::vector<SocketFile *> * getSocketFiles();
     void addConnection(Connection *);
     void addConnection(int , bool ,struct sockaddr_in);
+    void addSocketFile(SocketFile *);
     void deleteConnection(Connection *);
     void deleteConnection(struct sockaddr_in);
     void sendTCPMessage(std::string);
@@ -49,6 +53,7 @@ public:
     Connection * cheackBroadcastMessage(Message);
     Connection * makeConnection(Message);
     Connection * connectToAddress(struct sockaddr_in);
+    SocketFile * getSocketFile(std::string);
 };
 
 

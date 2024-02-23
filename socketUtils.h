@@ -21,6 +21,7 @@
 #define ID_LEN 5
 #define BACKLOG_LEN 10
 
+
 struct MessageDetails{
     int accepted;
     int connected;
@@ -47,7 +48,7 @@ int createIPV4UDPSocket();
 int generateRandomID();
 void send4Byte(int , int);
 void send8Byte(int , long);
-void sendNByte(int , char * , long);
+void sendNByte(int , const char * , long);
 int receive4Byte(int);
 long receive8Byte(int);
 char * receiveNByte(int , long);

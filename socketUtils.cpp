@@ -105,6 +105,7 @@ bool operator==(const struct sockaddr_in & first, const struct sockaddr_in & sec
 }
 
 void send4Byte(int socketFD, int number){
+    // Convert 4 byte to network order
     int32_t number_network_order = htonl(number);
     if(send(socketFD , &number_network_order , sizeof(int) , 0) == -1){
         throw std::runtime_error("Error send data to socket");
@@ -112,6 +113,7 @@ void send4Byte(int socketFD, int number){
 }
 
 void send8Byte(int socketFD, long number){
+    // Convert 8 byte to network order
     int64_t number_network_order =  static_cast<int64_t>(htonl(static_cast<uint32_t>(number >> 32))) << 32 |
                      htonl(static_cast<uint32_t>(number & 0xFFFFFFFF));
     if(send(socketFD , &number_network_order , sizeof(long) , 0) == -1){
@@ -119,14 +121,14 @@ void send8Byte(int socketFD, long number){
     }
 }
 
-void sendNByte(int socketFD, char * text , long text_length){
+void sendNByte(int socketFD, const char * text , long text_length){
     if(send(socketFD , text , text_length , 0) == -1){
         throw std::runtime_error("Error send data to socket");
     }
 }
 
 int receive4Byte(int socketFD){
-
+    // Receive 4 byte in network order and convert it to host order
     int32_t receive_number_network_order;
     ssize_t amountReceive = recv(socketFD, &receive_number_network_order , sizeof(int) , 0);
 
@@ -137,7 +139,7 @@ int receive4Byte(int socketFD){
 
 }
 long receive8Byte(int socketFD){
-
+    // Receive 8 byte in network order and convert it to host order
     int64_t receive_number_network_order;
     ssize_t amountReceive = recv(socketFD, &receive_number_network_order , sizeof(long) , 0);
 

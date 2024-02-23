@@ -12,6 +12,7 @@ NetworkArgs::NetworkArgs(){
     this->bindSockets();
     this->listenSockets();
     this->connections = new std::vector<Connection *>();
+    this->socket_files = new std::vector<SocketFile *>();
 }
 
 NetworkArgs::~NetworkArgs(){
@@ -141,6 +142,10 @@ std::vector<Connection * > * NetworkArgs::getConnections(){
     return this->connections;
 }
 
+std::vector<SocketFile *> * NetworkArgs::getSocketFiles(){
+    return this->socket_files;
+}
+
 void NetworkArgs::addConnection(Connection * connection){
     this->connections->push_back(connection);
     if(connection->isAccepted()) {
@@ -155,6 +160,9 @@ void NetworkArgs::addConnection(int socket , bool isAccepted ,  struct sockaddr_
     this->connections->push_back(connection);
 }
 
+void NetworkArgs::addSocketFile(SocketFile * socket_file){
+    this->socket_files->push_back(socket_file);
+}
 
 void NetworkArgs::deleteConnection(Connection * connection){
     for(auto it = this->connections->begin() ; it != this->connections->end() ; it++){
@@ -290,4 +298,13 @@ void NetworkArgs::sendTCPMessage(std::string message){
         send4Byte(socket , message.length());
         send(socket , message.c_str() , message.length() , 0);
     }
+}
+
+SocketFile * NetworkArgs::getSocketFile(std::string name){
+    for(auto it = this->socket_files->begin() ; it != this->socket_files->end() ; it++){
+        if((*it)->getName() == name){
+            return *it;
+        }
+    }
+    return NULL;
 }

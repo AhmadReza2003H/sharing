@@ -19,15 +19,17 @@ struct File
 
 #include "Connection.h"
 #include "socketUtils.h"
+#include "NetworkArgs.h"
 
 long getFileSize(FILE *);
 void sendFileName(int , int , char *);
 struct File receiveFileName(int);
+void sendNeedMessage(int , std::string);
 void answerToCheckRequest(int);
-void responseToFileIsExist(int);
+void responseToFileIsExist(int , NetworkArgs *);
 void sendFileIsExist(int , char * , int);
 void sendFileToSocket(int);
-void receiveFileFromSocket(int);
+void receiveFileFromSocket(int , NetworkArgs *);
 
 
 #endif // _FILESTREAMUTILS_H_
