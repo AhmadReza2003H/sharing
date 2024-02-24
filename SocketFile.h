@@ -10,7 +10,6 @@ private:
     std::string name;
     long file_length;
     long bytes_read;
-    char *bytes;
     std::set<int> sockets;
 public:
     SocketFile();
@@ -19,7 +18,6 @@ public:
     void setName(std::string);
     void setFileLength(long);
     void setBytesRead(long);
-    void setBytes(char*);
     void addSocket(int);
     void removeSocket(int);
     std::string getName();
@@ -27,7 +25,6 @@ public:
     long getFileLength();
     long getBytesRead();
     long getNextEndToRead();
-    char * getBytes();
     bool isFinished();
     void createFile();
 };

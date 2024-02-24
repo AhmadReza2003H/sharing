@@ -21,6 +21,8 @@ struct File
 #include "socketUtils.h"
 #include "NetworkArgs.h"
 
+class NetworkArgs;
+
 long getFileSize(FILE *);
 void sendFileName(int , int , char *);
 struct File receiveFileName(int);

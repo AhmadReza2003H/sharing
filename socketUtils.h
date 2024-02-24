@@ -16,7 +16,7 @@
 #include <stdexcept>
 
 #define BROADCAST_IP "255.255.255.255" // Broadcast IP address
-#define PORT 8080    // port number
+#define PORT 1234    // port number
 #define BUFFER_SIZE 1024
 #define ID_LEN 5
 #define BACKLOG_LEN 10

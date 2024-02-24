@@ -39,7 +39,7 @@ void * sendBroadcastMessage(void * arg){
     while (true) {
         // Create broadcast message (num of accepted , num of connected , ID) and send it
         networkArgs->sendBroadcastMessage();
-        usleep(5000000);
+        usleep(500000);
 
     }
 
@@ -140,7 +140,7 @@ void downloadNewFile(NetworkArgs * networkArgs, std::string file_name){
     if(networkArgs->getSocketFile(file_name) == NULL){
         // Create new socket file
         SocketFile * socket_file = new SocketFile(file_name);
-        networkArgs->addSocketFile(socket_file);
+         networkArgs->addSocketFile(socket_file);
         // Send need message to all connections
         std::vector<Connection *> * connectios = networkArgs->getConnections();
         for(auto it = connectios->begin() ; it != connectios->end() ; it++){
