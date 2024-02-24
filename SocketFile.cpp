@@ -60,10 +60,14 @@ void SocketFile::removeSocket(int socket){
 }
 
 long SocketFile::getNextEndToRead(){
-    return std::min(this->bytes_read + 1000 , this->file_length);
+    return std::min(this->bytes_read + TRANSFER_SIZE , this->file_length);
 }
 
 void SocketFile::createFile(){
     FILE * file_ptr = fopen(this->name.c_str() , "ab+");
     fclose(file_ptr);
+}
+
+float SocketFile::getPercentCompleted(){
+    return (this->bytes_read*100.0)/this->file_length;
 }

@@ -4,8 +4,9 @@
 #include <set>
 #include <algorithm>
 
-class SocketFile
-{
+#define TRANSFER_SIZE 50000
+
+class SocketFile {
 private:
     std::string name;
     long file_length;
@@ -27,6 +28,7 @@ public:
     long getNextEndToRead();
     bool isFinished();
     void createFile();
+    float getPercentCompleted();
 };
 
 

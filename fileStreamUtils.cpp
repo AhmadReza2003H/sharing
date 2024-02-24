@@ -126,8 +126,8 @@ void sendFileToSocket(int socketFD){
     send8Byte(socketFD , start);
     send8Byte(socketFD , end);
     sendFileName(socketFD , file.name_length , file.name);
-    send8Byte(socketFD ,size_to_read);
     sendNByte(socketFD , buffer , size_to_read);
+    fclose(file_ptr);
     delete[] buffer;
     delete[] file.name;
 }
@@ -136,8 +136,8 @@ void receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
     long start = receive8Byte(socketFD);
     long end = receive8Byte(socketFD);
     File file = receiveFileName(socketFD);
-    long file_length = receive8Byte(socketFD);
-    char * buffer = receiveNByte(socketFD , file_length);
+    long length = end - start;
+    char * buffer = receiveNByte(socketFD , length);
 
     pthread_mutex_t mutex;
     pthread_mutex_init(&mutex, NULL);
@@ -151,13 +151,11 @@ void receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
         perror("Error seeking in file");
         fclose(file_ptr);
     }
-    long length = end - start;
 
     // Write the new data to the file
     if (fwrite(buffer, 1, length, file_ptr) != length) {
         perror("Error writing to file");
-        fclose(
-            file_ptr);
+        fclose(file_ptr);
     }
 
     if(!socketFile->isFinished()){
@@ -166,17 +164,17 @@ void receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
         end2 = socketFile->getNextEndToRead();
 
         socketFile->setBytesRead(end2);
-        printf("read from %ld to %ld for file %s\n",start2 , end2 , file.name);
+        // printf("read from %ld to %ld for file %s with size %ld\n",start2 , end2 , file.name , socketFile->getFileLength());
 
         send4Byte(socketFD , SEND_FILE_CODE);
         send8Byte(socketFD , start2);
         send8Byte(socketFD , end2);
         sendFileName(socketFD,  file.name_length , file.name);  
     } else {
-        printf("end of receiving file : %s\n",file.name);
+        // printf("end of receiving file : %s with size %ld\n",file.name , socketFile->getFileLength());
     }
 
-
+    fclose(file_ptr);
     pthread_mutex_unlock(&mutex);
     pthread_mutex_destroy(&mutex);
 

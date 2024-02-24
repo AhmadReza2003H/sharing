@@ -14,20 +14,20 @@ void * sendBroadcastMessage(void *);
 void * recieveBroadcastMessage(void *);
 void * recieveTCPMessage(void *);
 void * acceptClients(void *);
+void * renderNetwork(void *);
 void sendMessageTCP(struct NetworkArgs *);
 void handleNewConnection(NetworkArgs * , Connection *);
 void downloadNewFile(NetworkArgs * , std::string);
 
+
 int main(){
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     NetworkArgs networkArgs;
-    pthread_t recieve_udp_thread, send_udp_thread , accept_thread;
-    pthread_mutex_t mutex;
-    pthread_mutex_lock(&mutex);
-    pthread_mutex_unlock(&mutex);
+    pthread_t recieve_udp_thread, send_udp_thread , accept_thread , render_thread;
     pthread_create(&accept_thread , NULL , acceptClients , (void *)&networkArgs);
     pthread_create(&send_udp_thread, NULL, sendBroadcastMessage, (void *)&networkArgs);
     pthread_create(&recieve_udp_thread, NULL,recieveBroadcastMessage ,(void *)&networkArgs);
+    pthread_create(&render_thread , NULL , renderNetwork , (void *)&networkArgs);
     sendMessageTCP(&networkArgs);
 
     return 0;
@@ -147,4 +147,22 @@ void downloadNewFile(NetworkArgs * networkArgs, std::string file_name){
             sendNeedMessage((*it)->getSocket() , file_name);
         }
     }
+}
+
+void * renderNetwork(void * arg){
+    NetworkArgs * networkArgs = (NetworkArgs *) arg;
+    while (true)
+    {
+        std::vector<SocketFile *> *socket_files = networkArgs->getSocketFiles();
+        for(SocketFile * socket_file : *socket_files){
+            if(socket_file->getFileLength() == -1){
+
+            } else {
+                printf("downloading file %s : %f\n", socket_file->getName().c_str() ,socket_file->getPercentCompleted());
+            }
+        }
+        usleep(1000000);
+    }
+    
+    return NULL;
 }

@@ -157,16 +157,20 @@ long receive8Byte(int socketFD){
 }
 
 char * receiveNByte(int socketFD, long length){
-    char * name = new char[length];
-    size_t amountReceive = recv(socketFD , name , length , 0);
-    if(amountReceive > 0){
-        if(amountReceive != length){
-            delete[] name;
-            throwIncompleteReceivingException();
+    char * buffer = new char[length];
+    for(long i = 0 ; i < length ; i++){
+        char ch;
+        size_t amountReceive = recv(socketFD , &ch , 1 , 0);
+        if(amountReceive > 0){
+            if(amountReceive != 1){
+                delete[] buffer;
+                throwIncompleteReceivingException();
+            }
+        } else {
+            delete[] buffer;
+            throwReceivingException();
         }
-    } else {
-        delete[] name;
-        throwReceivingException();
+        buffer[i] = ch;
     }
-    return name;
+    return buffer;
 }
