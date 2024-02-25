@@ -75,10 +75,9 @@ void responseToFileIsExist(int socketFD , NetworkArgs * networkArgs){
 
             if(!socketFile->isFinished()){
                 long start , end;
-                start = socketFile->getBytesRead();
-                end = socketFile->getNextEndToRead();
+                start = socketFile->getNextStartToRead();
+                end = std::min(start + TRANSFER_SIZE , socketFile->getFileLength());
 
-                socketFile->setBytesRead(end);
                 send4Byte(socketFD , SEND_FILE_CODE);
                 send8Byte(socketFD , start);
                 send8Byte(socketFD , end);
@@ -144,6 +143,8 @@ void receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
     pthread_mutex_lock(&mutex);
 
     SocketFile * socketFile  = networkArgs->getSocketFile(file.name);
+    socketFile->increaseBytesCompleted();
+    socketFile->setPartCompleted(start);
     FILE * file_ptr = fopen(file.name , "r+b");
     
     // Seek to the desired position in the file
@@ -158,20 +159,19 @@ void receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
         fclose(file_ptr);
     }
 
+    printf("read from %ld to %ld for file %s from socket : %d with size %ld\n",start , end , file.name ,socketFD ,socketFile->getFileLength());
+
     if(!socketFile->isFinished()){
         long start2 , end2;
-        start2 = socketFile->getBytesRead();
-        end2 = socketFile->getNextEndToRead();
-
-        socketFile->setBytesRead(end2);
-        // printf("read from %ld to %ld for file %s with size %ld\n",start2 , end2 , file.name , socketFile->getFileLength());
+        start2 = socketFile->getNextStartToRead();
+        end2 = std::min(start2 + TRANSFER_SIZE , socketFile->getFileLength());
 
         send4Byte(socketFD , SEND_FILE_CODE);
         send8Byte(socketFD , start2);
         send8Byte(socketFD , end2);
         sendFileName(socketFD,  file.name_length , file.name);  
     } else {
-        // printf("end of receiving file : %s with size %ld\n",file.name , socketFile->getFileLength());
+        printf("end of receiving file : %s with size %ld\n",file.name , socketFile->getFileLength());
     }
 
     fclose(file_ptr);

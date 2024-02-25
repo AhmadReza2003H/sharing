@@ -3,14 +3,18 @@
 #include <string>
 #include <set>
 #include <algorithm>
+#include <cmath>
 
-#define TRANSFER_SIZE 50000
+
+#define TRANSFER_SIZE 1000
 
 class SocketFile {
 private:
     std::string name;
     long file_length;
-    long bytes_read;
+    long request_index;
+    long bytes_completed_num;
+    bool * bytes_completed;
     std::set<int> sockets;
 public:
     SocketFile();
@@ -18,18 +22,18 @@ public:
     ~SocketFile();
     void setName(std::string);
     void setFileLength(long);
-    void setBytesRead(long);
     void addSocket(int);
     void removeSocket(int);
+    void setPartCompleted(long);
     std::string getName();
     std::set<int> getSockets();
     long getFileLength();
-    long getBytesRead();
-    long getNextEndToRead();
+    long getNextStartToRead();
     bool isFinished();
     void createFile();
+    void increaseBytesCompleted();
     float getPercentCompleted();
 };
 
 
-#endif // _SOCKETFILE_H
+#endif // _SOCKETFILE_H_

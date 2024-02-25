@@ -135,6 +135,9 @@ int receive4Byte(int socketFD){
     if(amountReceive <= 0){
         throwReceivingException();
     }
+    if(amountReceive != sizeof(int)){
+        throwIncompleteReceivingException();
+    }
     return ntohl(receive_number_network_order);
 
 }
@@ -145,6 +148,9 @@ long receive8Byte(int socketFD){
 
     if(amountReceive <= 0){
         throwReceivingException();
+    }
+    if(amountReceive != sizeof(long)){
+        throwIncompleteReceivingException();
     }
 
     // Convert received int64_t value from network byte order to host byte order

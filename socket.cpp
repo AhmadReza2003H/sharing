@@ -27,7 +27,7 @@ int main(){
     pthread_create(&accept_thread , NULL , acceptClients , (void *)&networkArgs);
     pthread_create(&send_udp_thread, NULL, sendBroadcastMessage, (void *)&networkArgs);
     pthread_create(&recieve_udp_thread, NULL,recieveBroadcastMessage ,(void *)&networkArgs);
-    pthread_create(&render_thread , NULL , renderNetwork , (void *)&networkArgs);
+    // pthread_create(&render_thread , NULL , renderNetwork , (void *)&networkArgs);
     sendMessageTCP(&networkArgs);
 
     return 0;
@@ -127,6 +127,13 @@ void sendMessageTCP(NetworkArgs * netWorkArgs) {
 
 
 void handleNewConnection(NetworkArgs * networkArgs, Connection * connection){
+    // Send need message to new connection
+    std::vector<SocketFile *> *socket_files = networkArgs->getSocketFiles();
+    for(SocketFile * socket_file : *socket_files){
+        if(!socket_file->isFinished()){
+            sendNeedMessage(connection->getSocket() , socket_file->getName());
+        }
+    }
     // Create new thread for handling new connection
     struct Handler * handler = new Handler();
     handler->connection = connection;
