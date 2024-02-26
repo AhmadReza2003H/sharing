@@ -163,7 +163,7 @@ long receive8Byte(int socketFD){
 }
 
 char * receiveNByte(int socketFD, long length){
-    char * buffer = new char[length];
+    char * buffer = new char[length + 1];
     for(long i = 0 ; i < length ; i++){
         char ch;
         size_t amountReceive = recv(socketFD , &ch , 1 , 0);
@@ -178,5 +178,6 @@ char * receiveNByte(int socketFD, long length){
         }
         buffer[i] = ch;
     }
+    buffer[length] = 0;
     return buffer;
 }

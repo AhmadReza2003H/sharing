@@ -23,11 +23,12 @@ void downloadNewFile(NetworkArgs * , std::string);
 int main(){
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     NetworkArgs networkArgs;
+    networkArgs.loadDownloadDetails();
     pthread_t recieve_udp_thread, send_udp_thread , accept_thread , render_thread;
     pthread_create(&accept_thread , NULL , acceptClients , (void *)&networkArgs);
     pthread_create(&send_udp_thread, NULL, sendBroadcastMessage, (void *)&networkArgs);
     pthread_create(&recieve_udp_thread, NULL,recieveBroadcastMessage ,(void *)&networkArgs);
-    // pthread_create(&render_thread , NULL , renderNetwork , (void *)&networkArgs);
+    pthread_create(&render_thread , NULL , renderNetwork , (void *)&networkArgs);
     sendMessageTCP(&networkArgs);
 
     return 0;
@@ -78,9 +79,8 @@ void * acceptClients(void * arg){
 
 void * recieveTCPMessage(void * arg){
     struct Handler * handler = ((struct Handler *)arg);
-
-    printf("user with IP:%s joined the network\n",inet_ntoa(handler->connection->getSocketAddr().sin_addr));
     int socketFD = handler->connection->getSocket();
+
     while(true){
         try{
             int code = receive4Byte(socketFD);
@@ -103,8 +103,6 @@ void * recieveTCPMessage(void * arg){
             break;
         }
     }
-
-    printf("user with IP:%s exit from network\n",inet_ntoa(handler->connection->getSocketAddr().sin_addr));
 
     // Erase drop connection
     handler->networkArgs->deleteConnection(handler->connection);
@@ -147,7 +145,8 @@ void downloadNewFile(NetworkArgs * networkArgs, std::string file_name){
     if(networkArgs->getSocketFile(file_name) == NULL){
         // Create new socket file
         SocketFile * socket_file = new SocketFile(file_name);
-         networkArgs->addSocketFile(socket_file);
+        networkArgs->addSocketFile(socket_file);
+        networkArgs->saveDownloadDetails();
         // Send need message to all connections
         std::vector<Connection *> * connectios = networkArgs->getConnections();
         for(auto it = connectios->begin() ; it != connectios->end() ; it++){
@@ -160,15 +159,23 @@ void * renderNetwork(void * arg){
     NetworkArgs * networkArgs = (NetworkArgs *) arg;
     while (true)
     {
-        std::vector<SocketFile *> *socket_files = networkArgs->getSocketFiles();
-        for(SocketFile * socket_file : *socket_files){
-            if(socket_file->getFileLength() == -1){
+        // Printing connections
+        std::vector<Connection *> * connectios = networkArgs->getConnections();
+        printf("num of connections : %ld\n",connectios->size());
+        for(Connection * connection : *connectios){
+            printf("conneted to IP : %s\n", inet_ntoa(connection->getSocketAddr().sin_addr));
+        }
 
-            } else {
-                printf("downloading file %s : %f\n", socket_file->getName().c_str() ,socket_file->getPercentCompleted());
-            }
+        // Printing downloads
+        std::vector<SocketFile *> *socket_files = networkArgs->getSocketFiles();
+        printf("num of downloads : %ld\n",socket_files->size());
+        for(SocketFile * socket_file : *socket_files){
+            long change = socket_file->getBytesCompletedNum() - socket_file->getLastChange();
+            socket_file->setLastChange(socket_file->getBytesCompletedNum());
+            printf("file : %s downloading with %ldb/s %f \n",socket_file->getName().c_str() , change*TRANSFER_SIZE , socket_file->getPercentCompleted());
         }
         usleep(1000000);
+        system("clear");
     }
     
     return NULL;

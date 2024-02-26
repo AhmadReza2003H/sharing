@@ -3,6 +3,7 @@
 SocketFile::SocketFile(){
     this->request_index = 0;
     this->bytes_completed_num = 0;
+    this->last_change = 0;
     this->file_length = -1;
 }
 
@@ -10,6 +11,7 @@ SocketFile::SocketFile(std::string name){
     this->name = name;
     this->request_index = 0;
     this->bytes_completed_num = 0;
+    this->last_change = 0;
     this->file_length = -1;
 }
 
@@ -39,8 +41,8 @@ void SocketFile::setFileLength(long file_length){
 }
 
 bool SocketFile::isFinished(){
-    long size = std::ceil(file_length/TRANSFER_SIZE);
-    return this->bytes_completed_num == size;
+    long size = std::ceil(file_length*1.0/TRANSFER_SIZE);
+    return this->bytes_completed_num == size && this->file_length != -1;
 }
 
 void SocketFile::addSocket(int socket){
@@ -77,7 +79,8 @@ void SocketFile::createFile(){
 }
 
 float SocketFile::getPercentCompleted(){
-    return (this->bytes_completed_num*TRANSFER_SIZE*100.0)/this->file_length;
+    long size = std::ceil(file_length*1.0/TRANSFER_SIZE);
+    return (this->bytes_completed_num*100.0)/size;
 }
 
 void SocketFile::setPartCompleted(long start_index){
@@ -88,3 +91,42 @@ void SocketFile::increaseBytesCompleted(){
     this->bytes_completed_num++;
 }
 
+void SocketFile::serialize(std::ofstream& ofs) const{
+    ofs << this->name << '\n';
+    ofs << this->file_length << '\n';
+    if(this->file_length != -1){
+        ofs << this->request_index << '\n';
+        ofs << this->bytes_completed_num << '\n';
+        long size = std::ceil(file_length*1.0/TRANSFER_SIZE);
+        for(int i = 0 ; i < size ; i++){
+            ofs << this->bytes_completed[i] << ' ';
+        }
+        ofs << '\n';
+    }
+}
+
+void SocketFile::deserialize(std::ifstream& ifs){
+    ifs >> this->name;
+    ifs >> this->file_length;
+    if(this->file_length != -1){
+        ifs >> this->request_index;
+        ifs >> this->bytes_completed_num;
+        long size = std::ceil(file_length*1.0/TRANSFER_SIZE);
+        this->bytes_completed = new bool[size];
+        for(int i = 0 ; i < size ; i++){
+            ifs >> this->bytes_completed[i];
+        }
+    }
+}
+
+void SocketFile::setLastChange(long change){
+    this->last_change = change;
+}
+
+long SocketFile::getLastChange(){
+    return this->last_change;
+}
+
+long SocketFile::getBytesCompletedNum(){
+    return this->bytes_completed_num;
+}

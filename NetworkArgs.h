@@ -54,6 +54,8 @@ public:
     Connection * makeConnection(Message);
     Connection * connectToAddress(struct sockaddr_in);
     SocketFile * getSocketFile(std::string);
+    void loadDownloadDetails();
+    void saveDownloadDetails();
 };
 
 

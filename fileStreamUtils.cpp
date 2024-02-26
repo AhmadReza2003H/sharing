@@ -65,7 +65,6 @@ void responseToFileIsExist(int socketFD , NetworkArgs * networkArgs){
 
         if(socketFile == NULL){
         } else {
-            socketFile->addSocket(socketFD);
 
             if(socketFile->getFileLength() == -1){
                 socketFile->setFileLength(file_length);
@@ -110,7 +109,8 @@ void sendFileToSocket(int socketFD){
 
     // Seek to the starting position
     if (fseek(file_ptr, start, SEEK_SET) != 0) {
-        // not have this part todo
+        fclose(file_ptr);
+        delete[] file.name;
         return;
     }
 
@@ -118,7 +118,10 @@ void sendFileToSocket(int socketFD){
 
     // Read the data into buffer
     if (fread(buffer, 1, size_to_read, file_ptr) != size_to_read) {
-        // perror("Error reading file");
+            // perror("Error reading file");
+        fclose(file_ptr);
+        delete[] buffer;
+        delete[] file.name;
         return;
     }
     send4Byte(socketFD , RECEIVE_FILE_CODE);
@@ -143,23 +146,29 @@ void receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
     pthread_mutex_lock(&mutex);
 
     SocketFile * socketFile  = networkArgs->getSocketFile(file.name);
-    socketFile->increaseBytesCompleted();
-    socketFile->setPartCompleted(start);
     FILE * file_ptr = fopen(file.name , "r+b");
     
     // Seek to the desired position in the file
     if (fseek(file_ptr, start, SEEK_SET) != 0) {
         perror("Error seeking in file");
         fclose(file_ptr);
+        delete[] buffer;
+        delete[] file.name;
+        return;
     }
 
     // Write the new data to the file
     if (fwrite(buffer, 1, length, file_ptr) != length) {
         perror("Error writing to file");
         fclose(file_ptr);
+        delete[] buffer;
+        delete[] file.name;
+        return;    
     }
 
-    printf("read from %ld to %ld for file %s from socket : %d with size %ld\n",start , end , file.name ,socketFD ,socketFile->getFileLength());
+    socketFile->increaseBytesCompleted();
+    socketFile->setPartCompleted(start);
+    networkArgs->saveDownloadDetails();
 
     if(!socketFile->isFinished()){
         long start2 , end2;

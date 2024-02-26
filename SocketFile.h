@@ -4,9 +4,10 @@
 #include <set>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 
-
-#define TRANSFER_SIZE 1000
+#define TRANSFER_SIZE 5000
 
 class SocketFile {
 private:
@@ -14,6 +15,7 @@ private:
     long file_length;
     long request_index;
     long bytes_completed_num;
+    long last_change;
     bool * bytes_completed;
     std::set<int> sockets;
 public:
@@ -25,14 +27,19 @@ public:
     void addSocket(int);
     void removeSocket(int);
     void setPartCompleted(long);
+    void setLastChange(long);
     std::string getName();
     std::set<int> getSockets();
     long getFileLength();
     long getNextStartToRead();
+    long getLastChange();
+    long getBytesCompletedNum();
     bool isFinished();
     void createFile();
     void increaseBytesCompleted();
     float getPercentCompleted();
+    void serialize(std::ofstream&) const;
+    void deserialize(std::ifstream&);
 };
 
 

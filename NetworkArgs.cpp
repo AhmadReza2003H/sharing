@@ -308,3 +308,40 @@ SocketFile * NetworkArgs::getSocketFile(std::string name){
     }
     return NULL;
 }
+
+void NetworkArgs::loadDownloadDetails(){
+    // Open file for reading
+    std::ifstream ifs("/home/ahmadreza/Desktop/sharing/DownloadDetails/Details.txt");
+    if (!ifs.is_open()) {
+        // Failed to open , create new file
+        std::ofstream ofs("/home/ahmadreza/Desktop/sharing/DownloadDetails/Details.txt");
+        ofs.close();
+    } else {
+        std::string line;
+        while (!ifs.eof()) {
+            SocketFile * socket_file = new SocketFile();
+            socket_file->deserialize(ifs);
+            if(!ifs){
+                delete socket_file;
+                break;;
+            }
+            this->socket_files->push_back(socket_file);
+        }
+        ifs.close();
+    }
+}
+void NetworkArgs::saveDownloadDetails(){
+    // Open file for writing
+    std::ofstream ofs("/home/ahmadreza/Desktop/sharing/DownloadDetails/Details.txt");
+    if (!ofs.is_open()) {
+        std::cerr << "Failed to open file for writing.\n";
+        return;
+    }
+
+    // Serialize each object and write to file
+    for (SocketFile * socket_file : *this->socket_files) {
+        socket_file->serialize(ofs);
+    }
+
+    ofs.close();
+}
