@@ -6,7 +6,11 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
+namespace fs = std::filesystem;
+
+#define DETEAILS_DIR "/DownloadDetails"
 #define TRANSFER_SIZE 5000
 
 class SocketFile {
@@ -35,8 +39,10 @@ public:
     long getLastChange();
     long getBytesCompletedNum();
     bool isFinished();
+    bool isThisPartFinished(long);
     void createFile();
     void increaseBytesCompleted();
+    void save();
     float getPercentCompleted();
     void serialize(std::ofstream&) const;
     void deserialize(std::ifstream&);

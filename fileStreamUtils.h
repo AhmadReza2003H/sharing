@@ -6,9 +6,11 @@
 #define ANSWER_TO_EXIST_CODE 2
 #define SEND_FILE_CODE 3
 #define RECEIVE_FILE_CODE 4
+#define PART_NOT_FIND_CODE 5
 #define BINARY_READER "rb" // Return NULL if not exist
 #define BINARY_READ_AND_WRITE "rb+" // Return NULL if not exist
 #define BINARY_READ_AND_WRITE_APPEND "ab+" // Create file if not exist
+#define FILES_DIR "/Downloads"
 
 struct File
 {
@@ -22,16 +24,21 @@ struct File
 #include "NetworkArgs.h"
 
 class NetworkArgs;
+class SocketFile;
 
 long getFileSize(FILE *);
-void sendFileName(int , int , char *);
+bool sendFileName(int , int , char *);
 struct File receiveFileName(int);
-void sendNeedMessage(int , std::string);
-void answerToCheckRequest(int);
-void responseToFileIsExist(int , NetworkArgs *);
-void sendFileIsExist(int , char * , int);
-void sendFileToSocket(int);
-void receiveFileFromSocket(int , NetworkArgs *);
+bool sendNeedMessage(int , std::string);
+bool answerToCheckRequest(int);
+bool responseToFileIsExist(int , NetworkArgs *);
+bool sendFileIsExist(int , char * , int);
+bool sendFileToSocket(int , NetworkArgs *);
+bool sendFilePart(int , File , long , long , FILE *);
+bool askPartFromSocket(int , SocketFile * , File);
+bool receiveFileFromSocket(int , NetworkArgs *);
+bool askAnotherPartFromSocket(int , NetworkArgs *);
+void createFilesDirectory();
 
 
 #endif // _FILESTREAMUTILS_H_

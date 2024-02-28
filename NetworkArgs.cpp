@@ -13,6 +13,7 @@ NetworkArgs::NetworkArgs(){
     this->listenSockets();
     this->connections = new std::vector<Connection *>();
     this->socket_files = new std::vector<SocketFile *>();
+    pthread_mutex_init(&mutex, NULL);
 }
 
 NetworkArgs::~NetworkArgs(){
@@ -24,6 +25,7 @@ NetworkArgs::~NetworkArgs(){
     delete this->connections;
     // Close socket
     this->closeSockets();
+    pthread_mutex_destroy(&mutex);
 }
 
 void NetworkArgs::enableAddressReuse(){
@@ -176,6 +178,7 @@ void NetworkArgs::deleteConnection(Connection * connection){
     } else {
         this->connected--;
     }
+    close(connection->getSocket());
     delete connection;
 }
 
@@ -310,38 +313,46 @@ SocketFile * NetworkArgs::getSocketFile(std::string name){
 }
 
 void NetworkArgs::loadDownloadDetails(){
-    // Open file for reading
-    std::ifstream ifs("/home/ahmadreza/Desktop/sharing/DownloadDetails/Details.txt");
-    if (!ifs.is_open()) {
-        // Failed to open , create new file
-        std::ofstream ofs("/home/ahmadreza/Desktop/sharing/DownloadDetails/Details.txt");
-        ofs.close();
+    std::string current_directory = fs::current_path().string(); // Get current dierctory
+    std::string downloads_directory = current_directory + DETEAILS_DIR; // Goto details directory directory
+    
+    if (!fs::exists(downloads_directory)){ // Create this folder (when code run for the first time)
+        fs::create_directory(downloads_directory);
     } else {
-        std::string line;
-        while (!ifs.eof()) {
-            SocketFile * socket_file = new SocketFile();
-            socket_file->deserialize(ifs);
-            if(!ifs){
-                delete socket_file;
-                break;;
+        for (const auto& entry : fs::directory_iterator(downloads_directory)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".txt") {
+                std::ifstream file(entry.path());
+                if (file) {
+                    SocketFile * socket_file = new SocketFile();
+                    socket_file->deserialize(file);
+                    if(file){
+                        this->socket_files->push_back(socket_file);
+                        file.close();
+                    } else {
+                        delete socket_file;
+                        file.close();
+                        perror("error in deserialize");
+                    }
+                }
             }
-            this->socket_files->push_back(socket_file);
         }
-        ifs.close();
     }
 }
-void NetworkArgs::saveDownloadDetails(){
-    // Open file for writing
-    std::ofstream ofs("/home/ahmadreza/Desktop/sharing/DownloadDetails/Details.txt");
-    if (!ofs.is_open()) {
-        std::cerr << "Failed to open file for writing.\n";
-        return;
-    }
 
-    // Serialize each object and write to file
-    for (SocketFile * socket_file : *this->socket_files) {
-        socket_file->serialize(ofs);
+void NetworkArgs::deleteSocketFile(SocketFile * socket_file){
+    for(auto it = this->socket_files->begin() ; it != this->socket_files->end() ; it++){
+        if((*it) == socket_file){
+            this->socket_files->erase(it);
+            delete socket_file;
+            break;
+        }
     }
+}
 
-    ofs.close();
+void NetworkArgs::lock(){
+    pthread_mutex_lock(&(this->mutex));
+}
+
+void NetworkArgs::unlock(){
+    pthread_mutex_unlock(&(this->mutex));
 }

@@ -6,6 +6,7 @@
 #include "fileStreamUtils.h"
 #include "SocketFile.h"
 
+
 class NetworkArgs{
 private:
     int udp_socket;
@@ -19,6 +20,7 @@ private:
     struct sockaddr_in tcp_socket_addr;
     std::vector<Connection *> * connections;
     std::vector<SocketFile *> * socket_files;
+    pthread_mutex_t mutex;
 
     void enableAddressReuse();
     void enableBroadcastOption();
@@ -46,6 +48,9 @@ public:
     void deleteConnection(Connection *);
     void deleteConnection(struct sockaddr_in);
     void sendTCPMessage(std::string);
+    void deleteSocketFile(SocketFile *);
+    void lock();
+    void unlock();
     bool isConnected(struct sockaddr_in);
     int sendBroadcastMessage();
     std::string getMessage();
@@ -55,7 +60,6 @@ public:
     Connection * connectToAddress(struct sockaddr_in);
     SocketFile * getSocketFile(std::string);
     void loadDownloadDetails();
-    void saveDownloadDetails();
 };
 
 

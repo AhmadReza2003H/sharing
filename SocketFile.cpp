@@ -5,6 +5,7 @@ SocketFile::SocketFile(){
     this->bytes_completed_num = 0;
     this->last_change = 0;
     this->file_length = -1;
+    this->bytes_completed = NULL;
 }
 
 SocketFile::SocketFile(std::string name){
@@ -13,10 +14,14 @@ SocketFile::SocketFile(std::string name){
     this->bytes_completed_num = 0;
     this->last_change = 0;
     this->file_length = -1;
+    this->bytes_completed = NULL;
 }
 
 
 SocketFile::~SocketFile(){
+    if(bytes_completed){
+        delete[] bytes_completed;
+    }
 }
 
 std::string SocketFile::getName(){
@@ -38,6 +43,9 @@ void SocketFile::setFileLength(long file_length){
     this->file_length = file_length;
     long size = std::ceil(file_length*1.0/TRANSFER_SIZE);
     this->bytes_completed = new bool[size];
+    for(long i = 0 ; i < size ; i++){
+        bytes_completed[i] = 0;
+    }
 }
 
 bool SocketFile::isFinished(){
@@ -87,6 +95,11 @@ void SocketFile::setPartCompleted(long start_index){
     this->bytes_completed[start_index / TRANSFER_SIZE] = true;
 }
 
+bool SocketFile::isThisPartFinished(long start_index){
+    return this->bytes_completed[start_index / TRANSFER_SIZE];
+}
+
+
 void SocketFile::increaseBytesCompleted(){
     this->bytes_completed_num++;
 }
@@ -129,4 +142,18 @@ long SocketFile::getLastChange(){
 
 long SocketFile::getBytesCompletedNum(){
     return this->bytes_completed_num;
+}
+
+void SocketFile::save(){
+    std::string current_directory = fs::current_path().string(); // Get current dierctory
+    std::string directory = current_directory + DETEAILS_DIR + "/" + this->name + ".txt"; // Goto DownloadDetails directory
+    
+    // Open file for writing
+    std::ofstream ofs(directory);
+    if (!ofs.is_open()) {
+        perror("Failed to open file for writing.");
+    } else {
+        this->serialize(ofs);
+        ofs.close();
+    }
 }

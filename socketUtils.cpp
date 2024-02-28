@@ -104,27 +104,30 @@ bool operator==(const struct sockaddr_in & first, const struct sockaddr_in & sec
     return first.sin_addr.s_addr == seccond.sin_addr.s_addr;
 }
 
-void send4Byte(int socketFD, int number){
+bool send4Byte(int socketFD, int number){
     // Convert 4 byte to network order
     int32_t number_network_order = htonl(number);
     if(send(socketFD , &number_network_order , sizeof(int) , 0) == -1){
-        throw std::runtime_error("Error send data to socket");
+        return false;
     }
+    return true;
 }
 
-void send8Byte(int socketFD, long number){
+bool send8Byte(int socketFD, long number){
     // Convert 8 byte to network order
     int64_t number_network_order =  static_cast<int64_t>(htonl(static_cast<uint32_t>(number >> 32))) << 32 |
                      htonl(static_cast<uint32_t>(number & 0xFFFFFFFF));
     if(send(socketFD , &number_network_order , sizeof(long) , 0) == -1){
-        throw std::runtime_error("Error send data to socket");
+        return false;
     }
+    return true;
 }
 
-void sendNByte(int socketFD, const char * text , long text_length){
+bool sendNByte(int socketFD, const char * text , long text_length){
     if(send(socketFD , text , text_length , 0) == -1){
-        throw std::runtime_error("Error send data to socket");
+        return false;
     }
+    return true;
 }
 
 int receive4Byte(int socketFD){

@@ -5,6 +5,7 @@
 
 #define EXIT "exit"
 
+
 struct Handler{
     Connection * connection;
     NetworkArgs * networkArgs;
@@ -22,6 +23,7 @@ void downloadNewFile(NetworkArgs * , std::string);
 
 int main(){
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    createFilesDirectory();
     NetworkArgs networkArgs;
     networkArgs.loadDownloadDetails();
     pthread_t recieve_udp_thread, send_udp_thread , accept_thread , render_thread;
@@ -82,24 +84,29 @@ void * recieveTCPMessage(void * arg){
     int socketFD = handler->connection->getSocket();
 
     while(true){
-        try{
-            int code = receive4Byte(socketFD);
-            if(code == FILE_EXIST_CODE){ // Code for cheking file is exist
-                answerToCheckRequest(socketFD);
-            } else if(code == ANSWER_TO_EXIST_CODE){ // Code for answer to file exist
-                responseToFileIsExist(socketFD , handler->networkArgs);
-            } else if(code == SEND_FILE_CODE){ // Code for send some part of file
-                sendFileToSocket(socketFD);
-            } else if(code == RECEIVE_FILE_CODE){ // Code for recieve part of file
-                receiveFileFromSocket(socketFD , handler->networkArgs);
-            } else if(code == 5){ // Code for
-
-            } else {
-                printf("some thing went wrong in recieving code!!\n");
+        int code = receive4Byte(socketFD);
+        if(code == FILE_EXIST_CODE){ // Code for cheking file is exist
+            if(!answerToCheckRequest(socketFD)){
                 break;
             }
-    
-        } catch(...){
+        } else if(code == ANSWER_TO_EXIST_CODE){ // Code for answer to file exist
+            if(!responseToFileIsExist(socketFD , handler->networkArgs)){
+                break;
+            }
+        } else if(code == SEND_FILE_CODE){ // Code for send some part of file
+            if(!sendFileToSocket(socketFD , handler->networkArgs)){
+                break;
+            }
+        } else if(code == RECEIVE_FILE_CODE){ // Code for recieve part of file
+            if(!receiveFileFromSocket(socketFD , handler->networkArgs)){
+                break;
+            }
+        } else if(code == PART_NOT_FIND_CODE){ // Code for asking for another part
+            if(!askAnotherPartFromSocket(socketFD , handler->networkArgs)){
+                break;
+            }
+        } else {
+            printf("some thing went wrong in recieving code!!\n");
             break;
         }
     }
@@ -144,9 +151,11 @@ void downloadNewFile(NetworkArgs * networkArgs, std::string file_name){
     // Checking file is not downloaded or in a download phaze
     if(networkArgs->getSocketFile(file_name) == NULL){
         // Create new socket file
+        networkArgs->lock();
         SocketFile * socket_file = new SocketFile(file_name);
+        socket_file->save();
         networkArgs->addSocketFile(socket_file);
-        networkArgs->saveDownloadDetails();
+        networkArgs->unlock();
         // Send need message to all connections
         std::vector<Connection *> * connectios = networkArgs->getConnections();
         for(auto it = connectios->begin() ; it != connectios->end() ; it++){

@@ -1,8 +1,13 @@
 #include "fileStreamUtils.h"
 
-void sendFileName(int socketFD, int file_name_length, char * file_name){
-    send4Byte(socketFD , file_name_length); // Send file name length and file name
-    sendNByte(socketFD , file_name , file_name_length);
+bool sendFileName(int socketFD, int file_name_length, char * file_name){
+    if(!send4Byte(socketFD , file_name_length)){
+        return false;
+    }
+    if(!sendNByte(socketFD , file_name , file_name_length)){
+        return false;
+    }
+    return true;
 }
 struct File receiveFileName(int socketFD){
     File file;
@@ -11,6 +16,15 @@ struct File receiveFileName(int socketFD){
     file.name = name;
     file.name_length = file_name_length;
     return file;
+}
+
+void createFilesDirectory(){
+    std::string current_directory = fs::current_path().string(); // Get current dierctory
+    std::string files_directory = current_directory + FILES_DIR ; // Goto files directory directory
+    
+    if (!fs::exists(files_directory)){ // Create this folder (when code run for the first time)
+        fs::create_directory(files_directory);
+    }
 }
 
 long getFileSize(FILE * file_ptr){
@@ -26,167 +40,254 @@ long getFileSize(FILE * file_ptr){
     return file_length;
 }
 
-void sendNeedMessage(int socketFD , std::string name){
-    send4Byte(socketFD , FILE_EXIST_CODE);
-    send4Byte(socketFD , name.length());
-    sendNByte(socketFD , name.c_str() , name.length());
+bool sendNeedMessage(int socketFD , std::string name){
+    if(!send4Byte(socketFD , FILE_EXIST_CODE)){
+        return false;
+    }
+    if(!send4Byte(socketFD , name.length())){
+        return false;
+    }
+    if(!sendNByte(socketFD , name.c_str() , name.length())){
+        return false;
+    }
+    return true;
 }
 
-void answerToCheckRequest(int socketFD){
-    int file_name_length = receive4Byte(socketFD);  // Receive file name length
-    char * name = receiveNByte(socketFD , file_name_length); // Receive file name
-    sendFileIsExist(socketFD , name , file_name_length); // Response to it
-    delete[] name;
+bool answerToCheckRequest(int socketFD){
+    int file_name_length;
+    char * name;
+    try {
+        file_name_length = receive4Byte(socketFD);  // Receive file name length
+        name = receiveNByte(socketFD , file_name_length); // Receive file name
+    } catch(...){
+        return false;
+    }
+    return sendFileIsExist(socketFD , name , file_name_length); // Response to it
 }
 
-void sendFileIsExist(int socketFD, char * file_name , int file_name_length){
+bool sendFileIsExist(int socketFD, char * file_name , int file_name_length){
 
     FILE * file_ptr;
-    file_ptr = fopen(file_name , BINARY_READER);
-    long file_length = getFileSize(file_ptr);  
+    std::string file_path = fs::current_path().string() + FILES_DIR + '/' + std::string(file_name);
+    file_ptr = fopen(file_path.c_str() , BINARY_READER);
+    long file_length = getFileSize(file_ptr);
 
-    send4Byte(socketFD , ANSWER_TO_EXIST_CODE); // Sending ANSWER_TO_EXIST_CODE to socket
-    send8Byte(socketFD , file_length); // Sending file length to socket(send -1 if file not exist)
-    sendFileName(socketFD , file_name_length , file_name);
+    if(!send4Byte(socketFD , ANSWER_TO_EXIST_CODE)){
+        delete[] file_name;
+        return false;
+    }
+    if(!send8Byte(socketFD , file_length)){
+        delete[] file_name;
+        return false;
+    }
+    if(!sendFileName(socketFD , file_name_length , file_name)){
+        delete[] file_name;
+        return false;
+    }
+
     if(file_ptr){
         fclose(file_ptr);
     }
+
+    delete[] file_name;
+    return true;
 }
 
-void responseToFileIsExist(int socketFD , NetworkArgs * networkArgs){
-    long file_length = receive8Byte(socketFD);
-    File file = receiveFileName(socketFD);
-    if(file_length != -1) { // sync for changing
-        pthread_mutex_t mutex;
-        pthread_mutex_init(&mutex, NULL);
-        pthread_mutex_lock(&mutex);
+bool responseToFileIsExist(int socketFD , NetworkArgs * networkArgs){
+    long file_length;
+    File file;
+    try{
+        file_length = receive8Byte(socketFD);
+        file = receiveFileName(socketFD);
+    } catch(...){
+        return false;
+    }
+    bool result;
+    if(file_length != -1) {
 
+        networkArgs->lock();
         SocketFile * socketFile  = networkArgs->getSocketFile(file.name);
 
-        if(socketFile == NULL){
-        } else {
+        if(socketFile != NULL){
 
             if(socketFile->getFileLength() == -1){
                 socketFile->setFileLength(file_length);
-                socketFile->createFile();
+                socketFile->save();
             }
 
 
             if(!socketFile->isFinished()){
-                long start , end;
-                start = socketFile->getNextStartToRead();
-                end = std::min(start + TRANSFER_SIZE , socketFile->getFileLength());
-
-                send4Byte(socketFD , SEND_FILE_CODE);
-                send8Byte(socketFD , start);
-                send8Byte(socketFD , end);
-                sendFileName(socketFD,  file.name_length , file.name);
+                result = askPartFromSocket(socketFD , socketFile , file);
             } else {
-
+                networkArgs->deleteSocketFile(socketFile);
+                result = true;
             }
         }
-
-        pthread_mutex_unlock(&mutex);
-        pthread_mutex_destroy(&mutex);
+        networkArgs->unlock();
     }
     delete[] file.name;
+    return result;
 }
 
-void sendFileToSocket(int socketFD){
-    long start = receive8Byte(socketFD);
-    long end = receive8Byte(socketFD);
+bool askPartFromSocket(int socketFD, SocketFile * socketFile , File file){
+    bool result;
+    long start , end;
+    start = socketFile->getNextStartToRead();
+    end = std::min(start + TRANSFER_SIZE , socketFile->getFileLength());
+    result = send4Byte(socketFD , SEND_FILE_CODE);
+    result &= send8Byte(socketFD , start);
+    result &= send8Byte(socketFD , end);
+    result &= sendFileName(socketFD , file.name_length , file.name);
+    socketFile->save();
+    return result;
+}
+
+bool sendFilePart(int socketFD, File file, long start, long end, FILE * file_ptr){
     long size_to_read = end - start;
-
-    File file = receiveFileName(socketFD);
-
-    FILE * file_ptr;
-    file_ptr = fopen(file.name , BINARY_READER);
-
-    if(file_ptr == NULL){
-        // error from sending name todo
-        return;
-    }
-
     // Seek to the starting position
     if (fseek(file_ptr, start, SEEK_SET) != 0) {
         fclose(file_ptr);
         delete[] file.name;
-        return;
+        return false;
     }
 
     char * buffer = new char[size_to_read];
 
     // Read the data into buffer
     if (fread(buffer, 1, size_to_read, file_ptr) != size_to_read) {
-            // perror("Error reading file");
         fclose(file_ptr);
         delete[] buffer;
         delete[] file.name;
-        return;
+        return false;
     }
-    send4Byte(socketFD , RECEIVE_FILE_CODE);
-    send8Byte(socketFD , start);
-    send8Byte(socketFD , end);
-    sendFileName(socketFD , file.name_length , file.name);
-    sendNByte(socketFD , buffer , size_to_read);
-    fclose(file_ptr);
+    bool result;
+    result = send4Byte(socketFD , RECEIVE_FILE_CODE);
+    result &= send8Byte(socketFD , start);
+    result &= send8Byte(socketFD , end);
+    result &= sendFileName(socketFD , file.name_length , file.name);
+    result &= sendNByte(socketFD , buffer , size_to_read);
     delete[] buffer;
-    delete[] file.name;
+    return result;
 }
 
-void receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
-    long start = receive8Byte(socketFD);
-    long end = receive8Byte(socketFD);
-    File file = receiveFileName(socketFD);
-    long length = end - start;
-    char * buffer = receiveNByte(socketFD , length);
+bool sendFileToSocket(int socketFD , NetworkArgs * networkArgs){
+    long start , end;
+    File file;
 
-    pthread_mutex_t mutex;
-    pthread_mutex_init(&mutex, NULL);
-    pthread_mutex_lock(&mutex);
+
+    try{
+        start = receive8Byte(socketFD);
+        end = receive8Byte(socketFD);
+        file = receiveFileName(socketFD);
+    } catch(...){
+        return false;
+    }
+
+    std::string file_path = fs::current_path().string() + FILES_DIR + '/' + std::string(file.name);
+    FILE * file_ptr;
+    file_ptr = fopen(file_path.c_str() , BINARY_READER);
+
+    if(file_ptr == NULL){
+        delete[] file.name;
+        return true;
+    }
+
+    SocketFile * socket_file = networkArgs->getSocketFile(file.name);
+    bool result = true;
+    if(socket_file != NULL){ // File is in dowloading process
+        if(socket_file->isThisPartFinished(start)){
+            result &= sendFilePart(socketFD , file , start , end , file_ptr);
+        } else {
+            result &= send4Byte(socketFD , PART_NOT_FIND_CODE);
+            result &= sendFileName(socketFD , file.name_length , file.name);
+        }
+    } else {
+        result &= sendFilePart(socketFD , file , start , end , file_ptr);
+    }
+    fclose(file_ptr);
+    delete[] file.name;
+    return result;
+}
+
+bool askAnotherPartFromSocket(int socketFD, NetworkArgs * networkArgs){
+    File file;
+    try{
+        file = receiveFileName(socketFD);
+    } catch(...){
+        return false;
+    }
+    SocketFile * socket_file = networkArgs->getSocketFile(file.name);
+    bool result = true;
+    if(socket_file != NULL){
+        networkArgs->lock();
+        if(!socket_file->isFinished()){
+            result = askPartFromSocket(socketFD , socket_file , file);
+        } else {
+            networkArgs->deleteSocketFile(socket_file);
+        }
+        networkArgs->unlock();
+    }
+    delete[] file.name;
+    return true;
+}
+
+
+bool receiveFileFromSocket(int socketFD, NetworkArgs * networkArgs){
+    long start , end  , length;
+    File file;
+    char * buffer;
+    try {
+        start = receive8Byte(socketFD);
+        end = receive8Byte(socketFD);
+        file = receiveFileName(socketFD);
+        length = end - start;
+    } catch(...){
+        return false;
+    }
+    try{
+        buffer = receiveNByte(socketFD , length);\
+    } catch(...){
+        delete[] file.name;
+        return false;
+    }
+
+    networkArgs->lock();
 
     SocketFile * socketFile  = networkArgs->getSocketFile(file.name);
     FILE * file_ptr = fopen(file.name , "r+b");
     
     // Seek to the desired position in the file
     if (fseek(file_ptr, start, SEEK_SET) != 0) {
-        perror("Error seeking in file");
         fclose(file_ptr);
         delete[] buffer;
         delete[] file.name;
-        return;
+        networkArgs->unlock();
+        return false;
     }
 
     // Write the new data to the file
     if (fwrite(buffer, 1, length, file_ptr) != length) {
-        perror("Error writing to file");
         fclose(file_ptr);
         delete[] buffer;
         delete[] file.name;
-        return;    
+        networkArgs->unlock();
+        return false;    
     }
 
     socketFile->increaseBytesCompleted();
     socketFile->setPartCompleted(start);
-    networkArgs->saveDownloadDetails();
-
+    socketFile->save();
+    bool result = true;
     if(!socketFile->isFinished()){
-        long start2 , end2;
-        start2 = socketFile->getNextStartToRead();
-        end2 = std::min(start2 + TRANSFER_SIZE , socketFile->getFileLength());
-
-        send4Byte(socketFD , SEND_FILE_CODE);
-        send8Byte(socketFD , start2);
-        send8Byte(socketFD , end2);
-        sendFileName(socketFD,  file.name_length , file.name);  
+        result &= askPartFromSocket(socketFD,  socketFile , file);  
     } else {
-        printf("end of receiving file : %s with size %ld\n",file.name , socketFile->getFileLength());
+        networkArgs->deleteSocketFile(socketFile);
     }
 
     fclose(file_ptr);
-    pthread_mutex_unlock(&mutex);
-    pthread_mutex_destroy(&mutex);
+    networkArgs->unlock();
 
     delete[] buffer;
     delete[] file.name;
+    return result;
 }
