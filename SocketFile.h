@@ -11,7 +11,7 @@
 namespace fs = std::filesystem;
 
 #define DETEAILS_DIR "/DownloadDetails"
-#define TRANSFER_SIZE 5000
+#define TRANSFER_SIZE 1000
 
 class SocketFile {
 private:

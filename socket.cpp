@@ -84,7 +84,12 @@ void * recieveTCPMessage(void * arg){
     int socketFD = handler->connection->getSocket();
 
     while(true){
-        int code = receive4Byte(socketFD);
+        int code;
+        try{
+            code = receive4Byte(socketFD);
+        } catch(...){
+            break;
+        }
         if(code == FILE_EXIST_CODE){ // Code for cheking file is exist
             if(!answerToCheckRequest(socketFD)){
                 break;
@@ -149,7 +154,10 @@ void handleNewConnection(NetworkArgs * networkArgs, Connection * connection){
 
 void downloadNewFile(NetworkArgs * networkArgs, std::string file_name){
     // Checking file is not downloaded or in a download phaze
-    if(networkArgs->getSocketFile(file_name) == NULL){
+    FILE * file_ptr;
+    std::string file_path = fs::current_path().string() + FILES_DIR + '/' + file_name;
+    file_ptr = fopen(file_path.c_str() , BINARY_READER);
+    if(networkArgs->getSocketFile(file_name) == NULL && file_ptr == NULL){
         // Create new socket file
         networkArgs->lock();
         SocketFile * socket_file = new SocketFile(file_name);
@@ -161,6 +169,8 @@ void downloadNewFile(NetworkArgs * networkArgs, std::string file_name){
         for(auto it = connectios->begin() ; it != connectios->end() ; it++){
             sendNeedMessage((*it)->getSocket() , file_name);
         }
+    } else {
+        fclose(file_ptr);
     }
 }
 

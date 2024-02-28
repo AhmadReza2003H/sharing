@@ -13,7 +13,6 @@ NetworkArgs::NetworkArgs(){
     this->listenSockets();
     this->connections = new std::vector<Connection *>();
     this->socket_files = new std::vector<SocketFile *>();
-    pthread_mutex_init(&mutex, NULL);
 }
 
 NetworkArgs::~NetworkArgs(){
@@ -25,7 +24,6 @@ NetworkArgs::~NetworkArgs(){
     delete this->connections;
     // Close socket
     this->closeSockets();
-    pthread_mutex_destroy(&mutex);
 }
 
 void NetworkArgs::enableAddressReuse(){
@@ -178,7 +176,6 @@ void NetworkArgs::deleteConnection(Connection * connection){
     } else {
         this->connected--;
     }
-    close(connection->getSocket());
     delete connection;
 }
 
@@ -310,53 +307,4 @@ SocketFile * NetworkArgs::getSocketFile(std::string name){
         }
     }
     return NULL;
-}
-
-void NetworkArgs::loadDownloadDetails(){
-    std::string current_directory = fs::current_path().string(); // Get current dierctory
-    std::string downloads_directory = current_directory + DETEAILS_DIR; // Goto details directory directory
-    
-    if (!fs::exists(downloads_directory)){ // Create this folder (when code run for the first time)
-        fs::create_directory(downloads_directory);
-    } else {
-        for (const auto& entry : fs::directory_iterator(downloads_directory)) {
-            if (entry.is_regular_file() && entry.path().extension() == ".txt") {
-                std::ifstream file(entry.path());
-                if (file) {
-                    SocketFile * socket_file = new SocketFile();
-                    socket_file->deserialize(file);
-                    if(file){
-                        if(!socket_file->isFinished()){
-                            this->socket_files->push_back(socket_file);
-                        } else {
-                            delete socket_file;
-                        }
-                        file.close();
-                    } else {
-                        delete socket_file;
-                        file.close();
-                        perror("error in deserialize");
-                    }
-                }
-            }
-        }
-    }
-}
-
-void NetworkArgs::deleteSocketFile(SocketFile * socket_file){
-    for(auto it = this->socket_files->begin() ; it != this->socket_files->end() ; it++){
-        if((*it) == socket_file){
-            this->socket_files->erase(it);
-            delete socket_file;
-            break;
-        }
-    }
-}
-
-void NetworkArgs::lock(){
-    pthread_mutex_lock(&(this->mutex));
-}
-
-void NetworkArgs::unlock(){
-    pthread_mutex_unlock(&(this->mutex));
 }

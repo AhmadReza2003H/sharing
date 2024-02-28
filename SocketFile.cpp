@@ -22,6 +22,11 @@ SocketFile::~SocketFile(){
     if(bytes_completed){
         delete[] bytes_completed;
     }
+    std::string current_directory = fs::current_path().string(); // Get current dierctory
+    std::string directory = current_directory + DETEAILS_DIR + "/" + this->name + ".txt"; // Goto DownloadDetails directory
+    if(fs::exists(directory)){
+        fs::remove(directory);
+    }
 }
 
 std::string SocketFile::getName(){
@@ -37,7 +42,6 @@ void SocketFile::setName(std::string name){
 long SocketFile::getFileLength(){
     return this->file_length;
 }
-
 
 void SocketFile::setFileLength(long file_length){
     this->file_length = file_length;
